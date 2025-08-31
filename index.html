@@ -70,12 +70,48 @@
             font-size: 14px;
             margin-top: 30px;
         }
+        .sunday-date {
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+        }
     </style>
     <script>
+        // 가장 가까운 일요일 날짜를 계산하는 함수
+        function getThisSunday() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
+            
+            let targetDate;
+            
+            if (dayOfWeek === 0) {
+                // 오늘이 일요일인 경우
+                targetDate = today;
+            } else {
+                // 이번 주 일요일을 계산 (다음 일요일)
+                targetDate = new Date(today);
+                targetDate.setDate(today.getDate() + (7 - dayOfWeek));
+            }
+            
+            return targetDate;
+        }
+        
+        // 날짜를 YYYY-MM-DD 형식으로 변환하는 함수
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
         // 페이지 로드 시 자동으로 PDF로 리다이렉트
         window.onload = function() {
-            // PDF 파일 경로 (항상 같은 파일명 사용)
-            const pdfUrl = './weekly-bulletin.pdf';
+            // 이번 주 일요일 날짜 계산
+            const sundayDate = getThisSunday();
+            const formattedDate = formatDate(sundayDate);
+            
+            // 동적 PDF 파일 경로 생성
+            const pdfUrl = `./archive/${formattedDate}.pdf`;
             
             // 현재 날짜 표시
             const today = new Date();
@@ -86,6 +122,17 @@
                 weekday: 'long'
             });
             document.getElementById('current-date').textContent = dateString;
+            
+            // 주일 날짜 표시
+            const sundayString = sundayDate.toLocaleDateString('ko-KR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            document.getElementById('sunday-date').textContent = `주일 예배: ${sundayString}`;
+            
+            // 수동 링크도 동적으로 업데이트
+            document.getElementById('manual-link').href = pdfUrl;
             
             // 1.5초 후 자동 리다이렉트
             setTimeout(function() {
@@ -102,10 +149,11 @@
             이번 주 주보를 불러오고 있습니다...<br>
             잠시만 기다려 주세요.
         </p>
-        <a href="./weekly-bulletin.pdf" class="manual-link">
+        <a href="#" id="manual-link" class="manual-link">
             바로 열기
         </a>
         <p class="date" id="current-date"></p>
+        <p class="sunday-date" id="sunday-date"></p>
     </div>
 </body>
 </html>
