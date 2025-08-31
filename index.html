@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>교회 주보</title>
     <style>
         body {
@@ -110,8 +113,11 @@
             const sundayDate = getThisSunday();
             const formattedDate = formatDate(sundayDate);
             
-            // 동적 PDF 파일 경로 생성
-            const pdfUrl = `./archive/${formattedDate}.pdf`;
+            // 캐시 버스터 (현재 타임스탬프 추가)
+            const cacheBuster = new Date().getTime();
+            
+            // 동적 PDF 파일 경로 생성 (캐시 우회용 파라미터 추가)
+            const pdfUrl = `./archive/${formattedDate}.pdf?v=${cacheBuster}`;
             
             // 현재 날짜 표시
             const today = new Date();
