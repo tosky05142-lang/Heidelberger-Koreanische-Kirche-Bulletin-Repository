@@ -52,6 +52,12 @@
             margin: 20px 0;
             line-height: 1.6;
         }
+        .fallback-message {
+            color: #f39c12;
+            font-size: 16px;
+            margin: 15px 0;
+            font-style: italic;
+        }
         .manual-link {
             display: inline-block;
             margin-top: 20px;
@@ -78,8 +84,16 @@
             font-weight: bold;
             margin-top: 10px;
         }
+        .error-message {
+            color: #e74c3c;
+            font-size: 16px;
+            margin: 20px 0;
+        }
     </style>
     <script>
+        let currentPdfUrl = '';
+        let isUsingFallback = false;
+        
         // 가장 가까운 일요일 날짜를 계산하는 함수
         function getThisSunday() {
             const today = new Date();
@@ -99,6 +113,14 @@
             return targetDate;
         }
         
+        // 지난주 일요일 날짜를 계산하는 함수
+        function getLastSunday() {
+            const thisSunday = getThisSunday();
+            const lastSunday = new Date(thisSunday);
+            lastSunday.setDate(thisSunday.getDate() - 7);
+            return lastSunday;
+        }
+        
         // 날짜를 YYYY-MM-DD 형식으로 변환하는 함수
         function formatDate(date) {
             const year = date.getFullYear();
@@ -107,18 +129,96 @@
             return `${year}-${month}-${day}`;
         }
         
-        // 페이지 로드 시 자동으로 PDF로 리다이렉트
-        window.onload = function() {
-            // 이번 주 일요일 날짜 계산
-            const sundayDate = getThisSunday();
-            const formattedDate = formatDate(sundayDate);
+        // PDF 파일 존재 여부를 확인하는 함수
+        async function checkPdfExists(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        // 메시지 업데이트 함수
+        function updateMessage(message, isFallback = false, isError = false) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
             
-            // 캐시 버스터 (현재 타임스탬프 추가)
+            if (isError) {
+                messageElement.className = 'error-message';
+            } else if (isFallback) {
+                messageElement.className = 'fallback-message';
+            } else {
+                messageElement.className = 'message';
+            }
+        }
+        
+        // 주일 날짜 정보 업데이트 함수
+        function updateSundayInfo(sundayDate, isFallback = false) {
+            const sundayString = sundayDate.toLocaleDateString('ko-KR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric'
+            });
+            
+            const prefix = isFallback ? '지난주 주일 예배: ' : '주일 예배: ';
+            document.getElementById('sunday-date').textContent = prefix + sundayString;
+        }
+        
+        // PDF 로드 시도 함수
+        async function loadBulletin() {
             const cacheBuster = new Date().getTime();
             
-            // 동적 PDF 파일 경로 생성 (캐시 우회용 파라미터 추가)
-            const pdfUrl = `./archive/${formattedDate}.pdf?v=${cacheBuster}`;
+            // 1단계: 이번 주 일요일 주보 시도
+            const thisSunday = getThisSunday();
+            const thisSundayFormatted = formatDate(thisSunday);
+            const thisSundayPdfUrl = `./archive/${thisSundayFormatted}.pdf?v=${cacheBuster}`;
             
+            updateMessage('이번 주 주보를 불러오고 있습니다...');
+            updateSundayInfo(thisSunday, false);
+            
+            const thisSundayExists = await checkPdfExists(thisSundayPdfUrl);
+            
+            if (thisSundayExists) {
+                currentPdfUrl = thisSundayPdfUrl;
+                updateMessage('이번 주 주보를 찾았습니다. 잠시만 기다려 주세요.');
+                isUsingFallback = false;
+            } else {
+                // 2단계: 지난주 일요일 주보 시도
+                updateMessage('이번 주 주보를 찾을 수 없습니다. 지난주 주보를 확인하고 있습니다...');
+                
+                const lastSunday = getLastSunday();
+                const lastSundayFormatted = formatDate(lastSunday);
+                const lastSundayPdfUrl = `./archive/${lastSundayFormatted}.pdf?v=${cacheBuster}`;
+                
+                const lastSundayExists = await checkPdfExists(lastSundayPdfUrl);
+                
+                if (lastSundayExists) {
+                    currentPdfUrl = lastSundayPdfUrl;
+                    updateMessage('지난주 주보를 불러옵니다.', true);
+                    updateSundayInfo(lastSunday, true);
+                    isUsingFallback = true;
+                } else {
+                    // 3단계: 둘 다 없는 경우
+                    updateMessage('주보를 찾을 수 없습니다. 관리자에게 문의해 주세요.', false, true);
+                    document.getElementById('manual-link').style.display = 'none';
+                    return;
+                }
+            }
+            
+            // 수동 링크 업데이트
+            document.getElementById('manual-link').href = currentPdfUrl;
+            
+            // 2초 후 자동 리다이렉트
+            setTimeout(function() {
+                if (currentPdfUrl) {
+                    window.location.href = currentPdfUrl;
+                }
+            }, 2000);
+        }
+        
+        // 페이지 로드 시 실행
+        window.onload = function() {
             // 현재 날짜 표시
             const today = new Date();
             const dateString = today.toLocaleDateString('ko-KR', { 
@@ -129,21 +229,8 @@
             });
             document.getElementById('current-date').textContent = dateString;
             
-            // 주일 날짜 표시
-            const sundayString = sundayDate.toLocaleDateString('ko-KR', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric'
-            });
-            document.getElementById('sunday-date').textContent = `주일 예배: ${sundayString}`;
-            
-            // 수동 링크도 동적으로 업데이트
-            document.getElementById('manual-link').href = pdfUrl;
-            
-            // 1.5초 후 자동 리다이렉트
-            setTimeout(function() {
-                window.location.href = pdfUrl;
-            }, 1500);
+            // 주보 로드 시작
+            loadBulletin();
         };
     </script>
 </head>
@@ -151,9 +238,8 @@
     <div class="container">
         <h1>⛪ 교회 주보</h1>
         <div class="loading"></div>
-        <p class="message">
-            이번 주 주보를 불러오고 있습니다...<br>
-            잠시만 기다려 주세요.
+        <p id="message" class="message">
+            주보를 불러오고 있습니다...
         </p>
         <a href="#" id="manual-link" class="manual-link">
             바로 열기
