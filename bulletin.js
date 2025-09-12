@@ -66,15 +66,16 @@ async function loadBulletin() {
     
     // 1. 이번 주 일요일 시도
     const thisSunday = getThisSunday();
-    const thisWeekFile = `./archive/${formatDate(thisSunday)}.pdf?v=${cache}`;
+    const thisWeekFile = `./archive/${formatDate(thisSunday)}.pdf`;
     
     updateMessage('이번 주 주보를 불러오고 있습니다...');
     updateDateDisplay(thisSunday);
     
     if (await checkPdfExists(thisWeekFile)) {
         updateMessage('이번 주 주보를 찾았습니다. 잠시만 기다려 주세요.');
-        document.getElementById('manual-link').href = thisWeekFile;
-        setTimeout(() => window.location.href = thisWeekFile, 2000);
+        const fileWithCache = `${thisWeekFile}?v=${cache}`;
+        document.getElementById('manual-link').href = fileWithCache;
+        setTimeout(() => window.location.href = fileWithCache, 2000);
         return;
     }
     
@@ -82,13 +83,14 @@ async function loadBulletin() {
     updateMessage('이번 주 주보가 없습니다. 지난주 주보를 확인하고 있습니다...');
     
     const lastSunday = getLastSunday();
-    const lastWeekFile = `./archive/${formatDate(lastSunday)}.pdf?v=${cache}`;
+    const lastWeekFile = `./archive/${formatDate(lastSunday)}.pdf`;
     
     if (await checkPdfExists(lastWeekFile)) {
         updateMessage('지난주 주보를 불러옵니다.', 'fallback');
         updateDateDisplay(lastSunday, true);
-        document.getElementById('manual-link').href = lastWeekFile;
-        setTimeout(() => window.location.href = lastWeekFile, 2000);
+        const fileWithCache = `${lastWeekFile}?v=${cache}`;
+        document.getElementById('manual-link').href = fileWithCache;
+        setTimeout(() => window.location.href = fileWithCache, 2000);
         return;
     }
     
